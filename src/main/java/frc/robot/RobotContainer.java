@@ -4,6 +4,7 @@
 
 package frc.robot;
 
+import com.ctre.phoenix.motorcontrol.ControlMode;
 import com.ctre.phoenix.motorcontrol.can.TalonSRX;
 import com.revrobotics.CANSparkMax;
 import com.revrobotics.CANSparkBase.ControlType;
@@ -29,15 +30,50 @@ public class RobotContainer {
     configureBindings();
     setupShooter();
     setupArm();
+    setupSystem();
   }
 
   private void configureBindings() {
     flightSim = new CommandJoystick(1);
   }
 
+  private void setupSystem() {
+    double ampAngle = 6.95;
+    double ampArm = 2000;
+    double speakerAngle = 21.8;
+    flightSim.button(9).onTrue(
+      new InstantCommand(
+        () -> {
+          armExtensionMotor.set(ControlMode.Position, ampArm);
+          shooterAngleMotor.getPIDController().setReference(ampAngle, ControlType.kPosition);
+        }
+      )
+    );
+    flightSim.button(7).onTrue(
+      new InstantCommand(
+        () -> {
+          armExtensionMotor.set(ControlMode.Position, 100);
+          shooterAngleMotor.getPIDController().setReference(speakerAngle, ControlType.kPosition);
+        }
+      )
+    );
+  }
+
   private void setupArm() {
     armExtensionMotor = new TalonSRX(12);
+    armExtensionMotor.config_kP(0, 1);
+    armExtensionMotor.configPeakOutputForward(0.6);
+    armExtensionMotor.configPeakOutputReverse(0.6);
 
+    flightSim.button(10).onTrue(
+      new InstantCommand(
+        () -> {
+          armExtensionMotor.set(ControlMode.Position, 2000);
+        }
+      )
+    );
+
+    Shuffleboard.getTab("Debug").addDouble("Arm Position", () -> armExtensionMotor.getSelectedSensorPosition());
   }
 
   private void setupShooter() {
