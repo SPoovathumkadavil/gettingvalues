@@ -11,11 +11,12 @@ import com.revrobotics.CANSparkBase.ControlType;
 import com.revrobotics.CANSparkBase.SoftLimitDirection;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 
+import edu.wpi.first.wpilibj.AnalogInput;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.WaitCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandJoystick;
 
 public class RobotContainer {
@@ -24,13 +25,22 @@ public class RobotContainer {
   private CANSparkMax shooterRightMotor;
   private CANSparkMax shooterLeftMotor;
   private CANSparkMax shooterAngleMotor;
+  private CANSparkMax loaderMotor;
   private TalonSRX armExtensionMotor;
+  private AnalogInput sensor;
 
   public RobotContainer() {
     configureBindings();
     setupShooter();
     setupArm();
+    setupSensor();
     setupSystem();
+  }
+
+  private void setupSensor() {
+    sensor = new AnalogInput(1);
+    Shuffleboard.getTab("Debug").addInteger("Sensor Measurement", () -> sensor.getValue());
+    Shuffleboard.getTab("Debug").addBoolean("Has Note", () -> sensor.getValue() < 2200);
   }
 
   private void configureBindings() {
@@ -38,9 +48,9 @@ public class RobotContainer {
   }
 
   private void setupSystem() {
-    double ampAngle = 6.95;
+    double ampAngle = -12;
     double ampArm = 2000;
-    double speakerAngle = 21.8;
+    double speakerAngle = -3;
     flightSim.button(9).onTrue(
       new InstantCommand(
         () -> {
@@ -57,6 +67,48 @@ public class RobotContainer {
         }
       )
     );
+
+    flightSim.button(1).onTrue(
+      Commands.runOnce(
+        () -> {
+          shooterLeftMotor.set(-0.4);
+          shooterRightMotor.set(-1.0);
+        }
+      ).andThen(
+        new WaitCommand(1.3)
+      ).andThen(
+        Commands.runOnce(
+          () -> {
+            loaderMotor.set(-1);
+          }
+        )
+      )
+    ).onFalse(
+      new InstantCommand(
+          () -> {
+            shooterLeftMotor.set(0);
+            shooterRightMotor.set(0);
+            loaderMotor.set(0);
+          }
+        )
+    );
+
+    flightSim.button(2).onTrue(
+      Commands.run(
+        () -> {
+          loaderMotor.set(-0.25);
+        }
+      ).until(
+        () -> sensor.getValue() < 2200
+      ).withTimeout(1.5).andThen(
+        new InstantCommand(
+          () -> {
+            loaderMotor.set(0);
+          }
+        )
+      )
+    );
+
   }
 
   private void setupArm() {
@@ -83,29 +135,29 @@ public class RobotContainer {
     shooterRightMotor = new CANSparkMax(13, MotorType.kBrushless);
     shooterLeftMotor = new CANSparkMax(14, MotorType.kBrushless);
 
-    flightSim.button(1).onTrue(
-      new InstantCommand(() -> {
-        shooterRightMotor.set(-1.0); // Working, RIGHT(OF ROBOT)(ID 13) -1.00, LEFT(OF ROBOT)(ID 14) -0.40
-        shooterLeftMotor.set(-0.4);
-      })
-    ).onFalse(
-      new InstantCommand(() -> {
-        shooterRightMotor.set(0);
-        shooterLeftMotor.set(0);
-      })
-    );
+    // flightSim.button(1).onTrue(
+    //   new InstantCommand(() -> {
+    //     shooterRightMotor.set(-1.0); // Working, RIGHT(OF ROBOT)(ID 13) -1.00, LEFT(OF ROBOT)(ID 14) -0.40
+    //     shooterLeftMotor.set(-0.4);
+    //   })
+    // ).onFalse(
+    //   new InstantCommand(() -> {
+    //     shooterRightMotor.set(0);
+    //     shooterLeftMotor.set(0);
+    //   })
+    // );
 
-    flightSim.button(2).onTrue(
-      new InstantCommand(() -> {
-        shooterRightMotor.set(1);
-        shooterLeftMotor.set(1);
-      })
-    ).onFalse(
-      new InstantCommand(() -> {
-        shooterRightMotor.set(0);
-        shooterLeftMotor.set(0);
-      })
-    );
+    // flightSim.button(2).onTrue(
+    //   new InstantCommand(() -> {
+    //     shooterRightMotor.set(1);
+    //     shooterLeftMotor.set(1);
+    //   })
+    // ).onFalse(
+    //   new InstantCommand(() -> {
+    //     shooterRightMotor.set(0);
+    //     shooterLeftMotor.set(0);
+    //   })
+    // );
 
     Shuffleboard.getTab("Debug").addDouble("speed", () -> shooterRightMotor.get());
 
@@ -118,8 +170,8 @@ public class RobotContainer {
     shooterAngleMotor.setSoftLimit(SoftLimitDirection.kForward, 28);
     shooterAngleMotor.setSoftLimit(SoftLimitDirection.kReverse, 0);
 
-    double flatShoot = 21.8;
-    double diveShoot = 25.0;
+    double flatShoot = -3.0;
+    double diveShoot = -4.0;
 
     flightSim.button(5).onTrue(
       new InstantCommand(
@@ -134,6 +186,14 @@ public class RobotContainer {
     );
 
     Shuffleboard.getTab("Debug").addDouble("Shooter Angle Position", () -> shooterAngleMotor.getEncoder().getPosition());
+  
+    /* Loader */
+
+    loaderMotor = new CANSparkMax(16, MotorType.kBrushless);
+
+
+    Shuffleboard.getTab("Debug").addDouble("Loader Speed", () -> loaderMotor.get());
+  
   }
 
 
