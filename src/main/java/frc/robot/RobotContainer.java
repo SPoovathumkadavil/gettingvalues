@@ -67,9 +67,9 @@ public class RobotContainer {
 
   private void setupSystem() {
 
-    double ampAngle = -12;
-    double ampArm = 2000;
-    double speakerAngle = -3.;
+    double ampAngle = -18;
+    double ampArm = 3000;
+    double speakerAngle = -1.;
     double intakeAngle = -35.; // TODO
     double readyHandoffAngle = -6.15; // TODO
     double intakeHandoffAngle = 5;
@@ -92,14 +92,40 @@ public class RobotContainer {
       )
     );
 
+     flightSim.button(4).onTrue(
+      Commands.runOnce(
+        () -> {
+          shooterLeftMotor.set(-0.40); //-0.4
+          shooterRightMotor.set(-0.40);
+        }
+      ).andThen(
+        new WaitCommand(0.2)
+      ).andThen(
+        Commands.runOnce(
+          () -> {
+            loaderMotor.set(-1);
+          }
+        )
+      )
+    ).onFalse(
+      new InstantCommand(
+          () -> {
+            shooterLeftMotor.set(0);
+            shooterRightMotor.set(0);
+            loaderMotor.set(0);
+          }
+        )
+    );
+
+
     flightSim.button(1).onTrue(
       Commands.runOnce(
         () -> {
-          shooterLeftMotor.set(-0.4);
+          shooterLeftMotor.set(-1.0);
           shooterRightMotor.set(-1.0);
         }
       ).andThen(
-        new WaitCommand(1.3)
+        new WaitCommand(1.6)
       ).andThen(
         Commands.runOnce(
           () -> {
@@ -147,6 +173,7 @@ public class RobotContainer {
           intakeOutputMotor.set(0);
           intakeTiltMotor.getPIDController().setReference(intakeHandoffAngle, ControlType.kPosition);
           shooterAngleMotor.getPIDController().setReference(readyHandoffAngle, ControlType.kPosition);
+          armExtensionMotor.set(ControlMode.Position, 100);
         }
       ).andThen(
         new WaitCommand(1.5)
@@ -156,8 +183,8 @@ public class RobotContainer {
           intakeOutputMotor.set(-0.3);
         }
       ).andThen(
-        Commands.waitUntil(() -> sensor.getValue() < 2200)
-      ).withTimeout(4).andThen(
+        Commands.waitUntil(() -> sensor.getValue() < 2200).withTimeout(4.0)
+      ).andThen(
         new InstantCommand(
           () -> {
             loaderMotor.set(0);
@@ -198,6 +225,9 @@ public class RobotContainer {
 
     shooterRightMotor = new CANSparkMax(13, MotorType.kBrushless);
     shooterLeftMotor = new CANSparkMax(14, MotorType.kBrushless);
+
+    shooterRightMotor.setSmartCurrentLimit(40);
+    shooterLeftMotor.setSmartCurrentLimit(40);
 
     // flightSim.button(1).onTrue(
     //   new InstantCommand(() -> {
@@ -255,6 +285,7 @@ public class RobotContainer {
 
     loaderMotor = new CANSparkMax(16, MotorType.kBrushless);
 
+    loaderMotor.setSmartCurrentLimit(40);
 
     Shuffleboard.getTab("Debug").addDouble("Loader Speed", () -> loaderMotor.get());
   
