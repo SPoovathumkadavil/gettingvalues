@@ -12,6 +12,7 @@ import com.revrobotics.CANSparkBase.SoftLimitDirection;
 import com.revrobotics.CANSparkLowLevel.MotorType;
 
 import edu.wpi.first.wpilibj.AnalogInput;
+import edu.wpi.first.wpilibj.DigitalInput;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
@@ -26,6 +27,8 @@ public class RobotContainer {
   private CANSparkMax shooterLeftMotor;
   private CANSparkMax shooterAngleMotor;
   private CANSparkMax loaderMotor;
+  private CANSparkMax intakeTiltMotor;
+  private CANSparkMax intakeOutputMotor;
   private TalonSRX armExtensionMotor;
   private AnalogInput sensor;
 
@@ -34,7 +37,22 @@ public class RobotContainer {
     setupShooter();
     setupArm();
     setupSensor();
+    setupIntake();
     setupSystem();
+  }
+
+  public void teleopInit() {
+    intakeTiltMotor.set(0);
+  }
+
+  private void setupIntake() {
+    intakeTiltMotor = new CANSparkMax(11, MotorType.kBrushless);
+    intakeOutputMotor = new CANSparkMax(10, MotorType.kBrushless);
+
+    intakeTiltMotor.getPIDController().setOutputRange(-0.4, 0.4);
+    intakeTiltMotor.getPIDController().setP(1);
+
+    Shuffleboard.getTab("Debug").addDouble("Intake Position", () -> intakeTiltMotor.getEncoder().getPosition());
   }
 
   private void setupSensor() {
@@ -48,9 +66,15 @@ public class RobotContainer {
   }
 
   private void setupSystem() {
+
     double ampAngle = -12;
     double ampArm = 2000;
-    double speakerAngle = -3;
+    double speakerAngle = -3.;
+    double intakeAngle = -35.; // TODO
+    double readyHandoffAngle = -6.15; // TODO
+    double intakeHandoffAngle = 5;
+    double intakeStowAngle = -8.5;
+
     flightSim.button(9).onTrue(
       new InstantCommand(
         () -> {
@@ -93,21 +117,61 @@ public class RobotContainer {
         )
     );
 
+    // flightSim.button(2).onTrue(
+    //   Commands.run(
+    //     () -> {
+    //       loaderMotor.set(-0.25);
+    //     }
+    //   ).until(
+    //     () -> sensor.getValue() < 2200
+    //   ).withTimeout(1.5).andThen(
+    //     new InstantCommand(
+    //       () -> {
+    //         loaderMotor.set(0);
+    //       }
+    //     )
+    //   )
+    // );
+
     flightSim.button(2).onTrue(
-      Commands.run(
+      Commands.runOnce(
+        () -> intakeTiltMotor.getPIDController().setReference(intakeAngle, ControlType.kPosition)
+      ).andThen(
+        new InstantCommand(
+          () -> intakeOutputMotor.set(0.3)
+        )
+      )
+    ).onFalse(
+      Commands.runOnce(
+        () -> {
+          intakeOutputMotor.set(0);
+          intakeTiltMotor.getPIDController().setReference(intakeHandoffAngle, ControlType.kPosition);
+          shooterAngleMotor.getPIDController().setReference(readyHandoffAngle, ControlType.kPosition);
+        }
+      ).andThen(
+        new WaitCommand(1.5)
+      ).andThen(
         () -> {
           loaderMotor.set(-0.25);
+          intakeOutputMotor.set(-0.3);
         }
-      ).until(
-        () -> sensor.getValue() < 2200
-      ).withTimeout(1.5).andThen(
+      ).andThen(
+        Commands.waitUntil(() -> sensor.getValue() < 2200)
+      ).withTimeout(4).andThen(
         new InstantCommand(
           () -> {
             loaderMotor.set(0);
+            intakeOutputMotor.set(0);
           }
+        )
+      ).andThen(
+        new InstantCommand(
+          () -> intakeTiltMotor.getPIDController().setReference(intakeStowAngle, ControlType.kPosition)
         )
       )
     );
+
+    flightSim.button(12).onTrue(Commands.runOnce(() -> intakeTiltMotor.getEncoder().setPosition(0)));
 
   }
 
@@ -199,6 +263,6 @@ public class RobotContainer {
 
 
   public Command getAutonomousCommand() {
-    return Commands.print("No autonomous command configured");
+    return Commands.print("No autonomous command configured");//q
   }
 }
