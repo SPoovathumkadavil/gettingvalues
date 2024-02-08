@@ -122,10 +122,10 @@ public class RobotContainer {
       Commands.runOnce(
         () -> {
           shooterLeftMotor.set(-1.0);
-          shooterRightMotor.set(-1.0);
+          shooterRightMotor.set(-0.6);
         }
       ).andThen(
-        new WaitCommand(1.6)
+        new WaitCommand(2)
       ).andThen(
         Commands.runOnce(
           () -> {
@@ -142,6 +142,8 @@ public class RobotContainer {
           }
         )
     );
+
+    Shuffleboard.getTab("Debug").addDouble("left speed", () -> shooterLeftMotor.get());
 
     // flightSim.button(2).onTrue(
     //   Commands.run(
