@@ -69,11 +69,20 @@ public class RobotContainer {
 
     double ampAngle = -18;
     double ampArm = 3000;
-    double speakerAngle = -1.;
+    double speakerAngle = -5.;
     double intakeAngle = -35.; // TODO
-    double readyHandoffAngle = -6.15; // TODO
+    double readyHandoffAngle = -6.7; // TODO
     double intakeHandoffAngle = 5;
     double intakeStowAngle = -8.5;
+
+    double shooterLeftSpeed = -4000;
+    double shooterRightSpeed = -4500;
+
+    Shuffleboard.getTab("Debug").addDouble("Shooter Left Velo", () -> shooterLeftMotor.getEncoder().getVelocity());
+    Shuffleboard.getTab("Debug").addDouble("Shooter Right Velo", () -> shooterRightMotor.getEncoder().getVelocity());
+
+    shooterLeftMotor.getPIDController().setP(.3);
+    shooterRightMotor.getPIDController().setP(.3);
 
     flightSim.button(9).onTrue(
       new InstantCommand(
@@ -86,8 +95,9 @@ public class RobotContainer {
     flightSim.button(7).onTrue(
       new InstantCommand(
         () -> {
-          armExtensionMotor.set(ControlMode.Position, 100);
+          armExtensionMotor.set(ControlMode.Position, ampArm);
           shooterAngleMotor.getPIDController().setReference(speakerAngle, ControlType.kPosition);
+        
         }
       )
     );
@@ -121,11 +131,11 @@ public class RobotContainer {
     flightSim.button(1).onTrue(
       Commands.runOnce(
         () -> {
-          shooterLeftMotor.set(-1.0);
-          shooterRightMotor.set(-0.6);
+          shooterLeftMotor.getPIDController().setReference(shooterLeftSpeed, ControlType.kVelocity);
+          shooterRightMotor.getPIDController().setReference(shooterRightSpeed, ControlType.kVelocity);
         }
       ).andThen(
-        new WaitCommand(2)
+        new WaitCommand(2.7)
       ).andThen(
         Commands.runOnce(
           () -> {
@@ -136,8 +146,11 @@ public class RobotContainer {
     ).onFalse(
       new InstantCommand(
           () -> {
+            // shooterLeftMotor.getPIDController().setReference(0, ControlType.kVelocity);
+            // shooterRightMotor.getPIDController().setReference(0, ControlType.kVelocity);
             shooterLeftMotor.set(0);
             shooterRightMotor.set(0);
+
             loaderMotor.set(0);
           }
         )
